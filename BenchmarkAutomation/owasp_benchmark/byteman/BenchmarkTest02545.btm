@@ -1,0 +1,15 @@
+RULE invoke BenchmarkTest02545
+CLASS org.owasp.benchmark.testcode.BenchmarkTest02545
+METHOD doPost
+AFTER INVOKE executeUpdate(String)
+IF true
+DO payloadExecuted($this.getClass().getSimpleName(), $param)
+ENDRULE
+
+RULE throw BenchmarkTest02545
+CLASS org.owasp.benchmark.testcode.BenchmarkTest02545
+METHOD doPost
+AT THROW
+IF true
+DO payloadNotExecuted($this.getClass().getSimpleName(), $param)
+ENDRULE

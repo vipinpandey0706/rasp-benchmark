@@ -1,0 +1,5 @@
+bar<split>safe<split>paramName
+bar' or '1'='1<split>unsafe<split>paramName
+whatever' or '1'<>'2<split>unsafe<split>paramName
+name=anything' OR 'x'='x<split>unsafe<split>paramName
+name=a' or 3=3--<split>unsafe<split>paramName

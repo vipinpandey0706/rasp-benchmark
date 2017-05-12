@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="BenchmarkAutomation" default="run-benchmark-tests" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
+
+    <property name="benchmark.jdk"        value="${java.home}"/>
+    <property name="rasp.args"            value=""/>
+
+    <property name="root.path"            value="${basedir}"/>
+    <property name="build.path"           value="${root.path}/build"/>
+    <property name="build.classes.path"   value="${build.path}/classes"/>
+    <property name="lib.path"             value="${root.path}/lib"/>
+    <property name="src.path"             value="${root.path}/src"/>
+    <property name="tests.benchmark.path" value="${root.path}/owasp_benchmark"/>
+    <property name="tests.reports.path"   value="${root.path}/reports"/>
+
+    <property name="ivy.repo.url"         value="http://central.maven.org/maven2/org/apache/ivy/ivy"/>
+    <property name="ivy.target.version"   value="2.4.0"/>
+    <property name="ivy.jar.file"         value="ivy-${ivy.target.version}.jar"/>
+
+    <mkdir dir="${lib.path}" />
+    <mkdir dir="owasp_benchmark/output_files" />
+
+    <get
+        src="http://central.maven.org/maven2/ant-contrib/ant-contrib/1.0b3/ant-contrib-1.0b3.jar"
+        dest="${lib.path}/ant-contrib-1.0b3.jar"
+        usetimestamp="true"
+    />
+
+    <taskdef resource="net/sf/antcontrib/antlib.xml" classpath="${lib.path}/ant-contrib-1.0b3.jar"/>
+
+    <available file="${lib.path}/${ivy.jar.file}" property="ivy.jar.present"/>
+
+	<if>
+		<isset property="javac.path" />
+		<then>
+			<fail message="The javac executable cannot be found. Please ensure a valid JDK is installed and that javac is either on the system path or is specified via the 'javac.path' property.">
+		        <condition>
+	                <not>
+	                    <available type="file" file="${javac.path}" />
+	                </not>
+		        </condition>
+		    </fail>
+		</then>
+	<else>
+		<property name="javac.path"	value="javac" />
+	</else>
+	</if>
+
+    <path id="lib.classpath">
+        <fileset dir="${lib.path}">
+            <include name="**/*.jar"/>
+        </fileset>
+    </path>
+
+    <path id="tests.framework.classpath">
+        <path refid="lib.classpath"/>
+        <pathelement location="${build.classes.path}"/>
+    </path>
+
+    <path id="tests.benchmark.classpath">
+        <path refid="lib.classpath"/>
+        <pathelement location="${build.classes.path}"/>
+    </path>
+
+    <target name="clean">
+        <delete dir="${build.path}"/>
+        <delete dir="${tests.reports.path}"/>
+    </target>
+
+    <target name="-init">
+        <mkdir dir="${build.classes.path}"/>
+        <mkdir dir="${tests.reports.path}"/>
+    </target>
+
+    <target name="bootstrap-ivy" unless="ivy.jar.present">
+        <echo message="Downloading Apache Ivy from ${ivy.repo.url}"/>
+        <get src="${ivy.repo.url}/${ivy.target.version}/${ivy.jar.file}" dest="${lib.path}/${ivy.jar.file}" usetimestamp="true"/>
+    </target>
+
+    <target name="retrieve-dependencies" depends="bootstrap-ivy"
+            description="Retrieve dependencies with Apache Ivy">
+        <taskdef uri="antlib:org.apache.ivy.ant" resource="org/apache/ivy/ant/antlib.xml" classpath="${lib.path}/${ivy.jar.file}"/>
+        <ivy:retrieve type="jar"/>
+    </target>
+
+    <target name="-compile-framework" depends="retrieve-dependencies">
+        <macrodef-compile destpath="${build.classes.path}">
+            <src path="${src.path}"/>
+            <include name="rasp_benchmark/**/*.java"/>
+            <classpath refid="lib.classpath"/>
+        </macrodef-compile>
+    </target>
+
+    <target name="-compile-benchmark-tests" depends="clean, -init, -compile-framework">
+        <macrodef-compile destpath="${build.classes.path}">
+            <src path="${tests.benchmark.path}"/>
+            <include name="**/*.java"/>
+            <classpath refid="tests.benchmark.classpath"/>
+        </macrodef-compile>
+    </target>
+
+    <target name="run-benchmark-tests" depends="clean, -init, -compile-framework, -compile-benchmark-tests">
+        <junit
+                fork="true"
+                printsummary="withOutAndErr"
+                showoutput="true"
+                haltonfailure="false"
+                haltonerror="false">
+            <batchtest
+                fork="true"
+                todir="${tests.reports.path}">
+                <fileset dir="${root.path}">
+                    <include name="owasp_benchmark/*Tests.java"/>
+                </fileset>
+            </batchtest>
+            <formatter type="xml"/>
+            <formatter
+                type="plain"
+                usefile="false"
+            />
+            <classpath refid="lib.classpath"/>
+            <classpath>
+                <pathelement location="${build.classes.path}"/>
+            </classpath>
+            <sysproperty key="benchmark.jdk" value="${benchmark.jdk}"/>
+            <sysproperty key="rasp.args" value="${rasp.args}"/>
+        </junit>
+    </target>
+
+    <macrodef name="macrodef-compile">
+        <attribute name="destpath"/>
+        <element
+            name="javac-elements"
+            optional="true"
+            implicit="true"
+        />
+        <sequential>
+            <javac
+                executable="${javac.path}"
+                destdir="@{destpath}"
+                encoding="UTF-8"
+                includeantruntime="false"
+                debug="on"
+                fork="true">
+            <javac-elements/>
+        </javac>
+        </sequential>
+    </macrodef>
+
+</project>
